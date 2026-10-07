@@ -1,0 +1,22 @@
+[*] gtkwave : decodeur complet (touche 5, code repetitif, touche A)
+[dumpfile] "complet.ghw"
+[timestart] 0
+[size] 1200 500
+[pos] -1 -1
+*-45.300000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[sst_width] 200
+[signals_width] 260
+[sst_expanded] 1
+[sst_vpaned_height] 120
+@28
+top.tb_decodeurir.ir_rx
+top.tb_decodeurir.samplingedge
+top.tb_decodeurir.startevent
+top.tb_decodeurir.ledg0
+top.tb_decodeurir.addressinprogress
+top.tb_decodeurir.commandinprogress
+@22
+top.tb_decodeurir.command[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

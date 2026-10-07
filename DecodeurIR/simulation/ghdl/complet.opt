@@ -1,0 +1,9 @@
+$ version 1.1
+# signaux enregistres pour gtkwave (decodeur complet)
+/tb_decodeurir/ir_rx
+/tb_decodeurir/samplingedge
+/tb_decodeurir/startevent
+/tb_decodeurir/ledg0
+/tb_decodeurir/addressinprogress
+/tb_decodeurir/commandinprogress
+/tb_decodeurir/command

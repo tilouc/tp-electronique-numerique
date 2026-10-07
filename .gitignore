@@ -1,0 +1,25 @@
+# fichiers generes par quartus (recrees a chaque compilation)
+db/
+incremental_db/
+greybox_tmp/
+DecodeurIR/output_files/*
+!DecodeurIR/output_files/DecodeurIR.sof
+DecodeurIR/simulation/modelsim/
+*.qws
+*.bak
+*.qarlog
+*.done
+c5_pin_model_dump.txt
+PLLJ_PLLSPE_INFO.txt
+.qsys_edit/
+
+# fichiers generes par modelsim / questa
+DecodeurIR/simulation/work/
+DecodeurIR/simulation/lpm_local/
+DecodeurIR/simulation/modelsim.ini
+DecodeurIR/simulation/transcript
+DecodeurIR/simulation/*.wlf
+DecodeurIR/simulation/wlft*
+
+# fichiers generes par ghdl / gtkwave
+DecodeurIR/simulation/ghdl/work/

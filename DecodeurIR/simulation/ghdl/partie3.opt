@@ -1,0 +1,4 @@
+$ version 1.1
+# signaux enregistres pour gtkwave (paragraphe 3.2)
+/tb_partie3/mainclk
+/tb_partie3/dut/samplingclk

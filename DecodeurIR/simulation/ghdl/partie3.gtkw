@@ -1,0 +1,16 @@
+[*] gtkwave : paragraphe 3.2 (comparateur regle sur 4 -> cycle de 5 x 20 ns)
+[dumpfile] "partie3.ghw"
+[timestart] 0
+[size] 1200 400
+[pos] -1 -1
+*-26.300000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[sst_width] 200
+[signals_width] 220
+[sst_expanded] 1
+[sst_vpaned_height] 120
+@28
+top.tb_partie3.mainclk
+top.tb_partie3.dut.samplingclk
+[pattern_trace] 1
+[pattern_trace] 0
