@@ -182,6 +182,8 @@ traduire_schema() {
         awk '{ print } /^-- =+$/ { if (++n == 2) exit }' "$dest"
         sed -e "s/^SIGNAL\tDFFE_inst4 :  STD_LOGIC;/SIGNAL\tDFFE_inst4 :  STD_LOGIC := '0';/" \
             -e "s/^SIGNAL\tSYNTHESIZED_WIRE_26 :  STD_LOGIC;/SIGNAL\tSYNTHESIZED_WIRE_26 :  STD_LOGIC := '0';/" \
+            -e "s/^SIGNAL\tIR_Sync1 :  STD_LOGIC;/SIGNAL\tIR_Sync1 :  STD_LOGIC := '1';/" \
+            -e "s/^SIGNAL\tIR_Sync2 :  STD_LOGIC;/SIGNAL\tIR_Sync2 :  STD_LOGIC := '1';/" \
             "$PROJET/DecodeurIR.vhd"
     } > "$dest.tmp" && mv "$dest.tmp" "$dest"
     rm -f "$PROJET/DecodeurIR.vhd"

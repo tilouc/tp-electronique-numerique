@@ -6,9 +6,11 @@
 -- utilise uniquement pour la simulation RTL sous ModelSim / Questa.
 -- Le script ../../run.sh le regenere automatiquement a partir du schema.
 --
--- Seule modification : les deux bascules DFFE (inst4 et inst8) demarrent a
--- '0', comme dans le FPGA a la mise sous tension (sinon elles resteraient a
--- 'U' en simulation car leur entree D depend de leur propre sortie).
+-- Seules modifications (valeurs de depart des bascules, sinon elles restent a
+-- 'U' au debut de la simulation) :
+--   - DFFE inst4 et inst8 demarrent a '0', comme dans le FPGA ;
+--   - DFF inst10 et inst11 demarrent a '1' (recepteur IR au repos), pour ne
+--     pas provoquer un faux recalage du compteur au debut de la simulation.
 -- ============================================================================
 -- Copyright (C) 2019  Intel Corporation. All rights reserved.
 -- Your use of Intel Corporation's design tools, logic functions 
@@ -27,7 +29,7 @@
 
 -- PROGRAM		"Quartus Prime"
 -- VERSION		"Version 19.1.0 Build 670 09/22/2019 SJ Lite Edition"
--- CREATED		"Wed Oct  7 10:42:33 2026"
+-- CREATED		"Thu Oct  8 11:14:38 2026"
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.all; 
@@ -71,6 +73,7 @@ ARCHITECTURE bdf_type OF DecodeurIR IS
 
 COMPONENT counter_nbits
 	PORT(sclr : IN STD_LOGIC;
+		 sset : IN STD_LOGIC;
 		 clock : IN STD_LOGIC;
 		 q : OUT STD_LOGIC_VECTOR(14 DOWNTO 0)
 	);
@@ -141,6 +144,9 @@ END COMPONENT;
 SIGNAL	CommandInProgress_ALTERA_SYNTHESIZED :  STD_LOGIC;
 SIGNAL	CounterIs47 :  STD_LOGIC;
 SIGNAL	CountOut :  STD_LOGIC_VECTOR(5 DOWNTO 0);
+SIGNAL	IR_Change :  STD_LOGIC;
+SIGNAL	IR_Sync1 :  STD_LOGIC := '1';
+SIGNAL	IR_Sync2 :  STD_LOGIC := '1';
 SIGNAL	ResetCounter :  STD_LOGIC;
 SIGNAL	SamplingClk :  STD_LOGIC;
 SIGNAL	SpaceCount :  STD_LOGIC_VECTOR(1 DOWNTO 0);
@@ -191,11 +197,31 @@ SYNTHESIZED_WIRE_10 <= '1';
 
 b2v_inst : counter_nbits
 PORT MAP(sclr => SamplingClk,
+		 sset => IR_Change,
 		 clock => MainClk,
 		 q => SYNTHESIZED_WIRE_0);
 
 IR_RXCopy <= IR_RX;
 
+
+
+PROCESS(MainClk)
+BEGIN
+IF (RISING_EDGE(MainClk)) THEN
+	IR_Sync1 <= IR_RX;
+END IF;
+END PROCESS;
+
+
+PROCESS(MainClk)
+BEGIN
+IF (RISING_EDGE(MainClk)) THEN
+	IR_Sync2 <= IR_Sync1;
+END IF;
+END PROCESS;
+
+
+IR_Change <= IR_Sync2 XOR IR_Sync1;
 
 
 b2v_inst16 : countmod48

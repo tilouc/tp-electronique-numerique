@@ -2,7 +2,9 @@
 
 ce projet, c'est le tp "fpga" fait en entier dans quartus (parties 3 à 6 du sujet). la carte de2-115 reçoit le signal de la télécommande, le décode, et affiche sur des leds le code de la touche appuyée.
 
-les parties optionnelles (6.4 et 6.5 : afficheurs 7 segments, affichage de l'adresse) ne sont pas faites. le circuit contient uniquement ce que le sujet demande, rien de plus.
+les parties optionnelles (6.4 et 6.5 : afficheurs 7 segments, affichage de l'adresse) ne sont pas faites.
+
+**un seul ajout par rapport au pdf** : sur la vraie carte, la partie 6 ne marchait pas (le code des touches était mal lu). on a donc ajouté un petit montage de 3 blocs qui **recale le métronome** à chaque changement du signal reçu (expliqué dans la section 4, juste après la partie 3). tout le reste est exactement comme dans le pdf. la version sans cet ajout, identique au pdf, est gardée dans la branche `version-pdf` du dépôt.
 
 ---
 
@@ -49,7 +51,9 @@ exemples (led allumée = 1) :
 
 les codes sont fixés par le fabricant de la télécommande (tableau page 17 du pdf) : la touche `A` donne `0x0F`, ce n'est pas une erreur.
 
-si une touche est mal lue de temps en temps, rappuie (explication dans la section 9, "la limite du montage").
+si une touche est mal lue (ça doit rester rare), rappuie : explication dans la section 9.
+
+**si tu avais déjà téléchargé le projet avant l'ajout** : dans le dossier, tape `git pull` pour récupérer la nouvelle version, puis `./run.sh` pour reprogrammer la carte.
 
 ---
 
@@ -58,11 +62,12 @@ si une touche est mal lue de temps en temps, rappuie (explication dans la sectio
 - **fpga** : une puce "vierge" qui contient des milliers de petites briques logiques (portes, bascules). on ne lui écrit pas un programme qui s'exécute ligne par ligne comme en c ou en python : **on lui dessine un circuit**, et la puce se câble elle-même pour devenir ce circuit.
 - **quartus** : le logiciel où on dessine ce circuit (le **schéma**). **compiler**, c'est quand quartus transforme le schéma en fichier `.sof` qu'on envoie dans la puce.
 - **horloge** : un signal qui fait 0, 1, 0, 1... très régulièrement. sur la carte, elle bat à **50 mégahertz** (50 millions de fois par seconde), donc une période dure **20 ns** (nanosecondes). dans le schéma elle s'appelle `MainClk` et elle entre dans le fpga par la patte `Y2`. presque tous les blocs qui ont une mémoire (compteurs, registres, bascules, machine d'états) reçoivent cette horloge : ils ne peuvent changer qu'au moment d'un coup d'horloge, et seulement s'ils y sont autorisés (voir juste en dessous).
-- **entrée d'autorisation** (appelée `ENA`, `enable`, `clk_en` ou `ClockEnable` selon les blocs) : un bloc qui reçoit l'horloge ne fait quelque chose que si son entrée d'autorisation vaut 1. c'est l'astuce de tout le tp : ces blocs reçoivent l'horloge rapide (`MainClk`) mais ne sont autorisés à avancer qu'une fois par burst (l'unité de temps de la télécommande, 562,5 µs, expliquée en section 3). le seul qui avance à chaque coup, toutes les 20 ns, c'est le compteur du métronome (`Counter_Nbits`) : c'est justement lui qui mesure la durée d'un burst.
-- **compteur** : un bloc qui ajoute 1 à chaque coup d'horloge autorisé. son entrée `sclr` le remet à 0 au coup d'horloge autorisé suivant (pour `Counter_Nbits`, qui n'a pas d'entrée d'autorisation, c'est simplement le coup d'horloge suivant).
+- **entrée d'autorisation** (appelée `ENA`, `enable`, `clk_en` ou `ClockEnable` selon les blocs) : un bloc qui reçoit l'horloge ne fait quelque chose que si son entrée d'autorisation vaut 1. c'est l'astuce de tout le tp : ces blocs reçoivent l'horloge rapide (`MainClk`) mais ne sont autorisés à avancer qu'une fois par burst (l'unité de temps de la télécommande, 562,5 µs, expliquée en section 3). le seul compteur qui avance à chaque coup, toutes les 20 ns, c'est celui du métronome (`Counter_Nbits`) : c'est justement lui qui mesure la durée d'un burst.
+- **compteur** : un bloc qui ajoute 1 à chaque coup d'horloge autorisé. son entrée `sclr` le remet à 0 au coup d'horloge autorisé suivant (pour `Counter_Nbits`, qui n'a pas d'entrée d'autorisation, c'est simplement le coup d'horloge suivant). `Counter_Nbits` a aussi une entrée `sset` (c'est l'ajout) : elle le met à une valeur fixée à l'avance au lieu de 0.
 - **comparateur** : un bloc qui sort 1 quand le nombre qu'il reçoit est égal à une valeur fixée (sa sortie s'appelle `aeb`, "a égal b").
 - **registre à décalage** : une rangée de cases mémoire (une case = un bit). à chaque coup d'horloge autorisé, toutes les cases se décalent d'un cran, une nouvelle valeur entre d'un côté et la plus vieille sort de l'autre. ça sert à garder en mémoire les dernières valeurs reçues.
-- **bascule** (`DFFE`) : une case mémoire d'un seul bit. une **bascule t**, c'est une bascule dont l'entrée reçoit l'inverse de sa propre sortie (via une porte `NOT`) : à chaque fois qu'elle est activée, elle change d'état (0 → 1 → 0 ...).
+- **bascule** (`DFFE`) : une case mémoire d'un seul bit. une **bascule t**, c'est une bascule dont l'entrée reçoit l'inverse de sa propre sortie (via une porte `NOT`) : à chaque fois qu'elle est activée, elle change d'état (0 → 1 → 0 ...). la `DFF` est la même bascule, mais sans entrée d'autorisation : à chaque coup d'horloge, elle recopie simplement son entrée `D` sur sa sortie `Q`.
+- **porte `XOR`** ("ou exclusif") : elle sort 1 quand ses deux entrées sont **différentes**, et 0 quand elles sont pareilles.
 - **machine d'états** : un petit circuit qui est toujours dans une seule "situation" parmi plusieurs, et qui passe de l'une à l'autre quand des conditions sont remplies.
 - **simulation** : faire tourner le circuit sur l'ordinateur, sans la carte, et regarder les signaux sous forme de courbes. ça permet de vérifier que le circuit marche avant de l'envoyer dans la puce.
 - **binaire et hexadécimal** : `0000 0101` en binaire = 5. on écrit souvent les octets en hexadécimal, avec `0x` devant : `0x05` = 5, `0x0F` = 15, `0xFA` = 250. `Command[7..0]` veut dire "les bits 7 à 0 du signal `Command`".
@@ -92,7 +97,7 @@ le récepteur infrarouge de la carte transforme ces flashs en un signal électri
 
 ### l'idée du circuit en 4 étapes
 
-1. **un métronome** : regarder le signal une fois par burst, au bon rythme (partie 3 du sujet)
+1. **un métronome** : regarder le signal une fois par burst, au bon rythme, au milieu de chaque burst (partie 3 du sujet + l'ajout)
 2. **repérer le début** d'un message : le préambule (partie 4)
 3. **savoir où on en est** dans le message : adresse ou commande (partie 5)
 4. **lire les 0 et les 1** de la commande, les stocker et les afficher (partie 6)
@@ -112,7 +117,8 @@ tout est dessiné dans un seul schéma : `DecodeurIR/DecodeurIR.bdf`.
 - `INPUT` / `OUTPUT` = une entrée ou une sortie du fpga. le cadre à côté (`PIN_Y2`, `PIN_AH26`...) dit sur quelle patte de la puce elle est branchée.
 - `inst`, `inst2`, `inst3`... = le numéro de chaque bloc, donné par quartus.
 - sur les comparateurs, `datab[]=255` (par exemple) = la valeur fixée à laquelle on compare.
-- sur les bascules `DFFE`, les ronds `PRN` et `CLRN` en haut et en bas ne sont pas utilisés.
+- sur les bascules `DFFE` et `DFF`, les ronds `PRN` et `CLRN` en haut et en bas ne sont pas utilisés.
+- la phrase écrite en vert dans le schéma est un simple commentaire, pas un fil.
 - `GND` = 0 fixe, `VCC` = 1 fixe. attention : le petit `VCC` écrit sous chaque `INPUT` n'est pas un 1 fixe, c'est juste un réglage par défaut de quartus qui ne sert pas ici : l'entrée vient bien de sa patte.
 
 ### partie 3 du sujet : le métronome (pages 7 à 12)
@@ -136,6 +142,25 @@ tout est dessiné dans un seul schéma : `DecodeurIR/DecodeurIR.bdf`.
 
 attention : le projet, lui, garde bien 28265. le comparateur réglé sur 4 est une copie à part, dans `DecodeurIR/simulation/partie3/Comp_MaxValue.vhd`, utilisée uniquement par `./run.sh simulation3`.
 
+### l'ajout : recaler le métronome (pas dans le pdf, nécessaire sur la vraie carte)
+
+**le problème** : dans le pdf, le métronome tourne tout seul, sans jamais regarder la télécommande. il ne lit au bon moment que si la télécommande va exactement à la même vitesse que lui. sinon, l'instant de lecture glisse un peu à chaque burst, et ce glissement s'accumule sur tout le message (121 bursts). la commande est à la fin du message, donc c'est elle qui est mal lue en premier. c'est ce qui s'est passé sur la carte : les leds vertes (partie 4) marchaient, mais pas les leds rouges (partie 6).
+
+**la solution** : à chaque fois que le signal reçu change (début ou fin d'un flash), on remet le compteur du métronome à une valeur choisie pour que la lecture suivante tombe **au milieu** d'un burst. le glissement ne peut plus s'accumuler : il repart de zéro à chaque flash.
+
+**les composants** (la rangée du milieu dans la capture ci-dessous, sous la phrase verte) :
+- deux bascules `DFF` à la suite (`inst10` et `inst11`), qui reçoivent `MainClk`. `IR_Sync1` = la valeur de `IR_RX` au dernier coup d'horloge, `IR_Sync2` = la valeur du coup d'horloge d'avant. on passe par ces bascules parce que le signal de la télécommande peut changer n'importe quand, pas forcément au moment d'un coup d'horloge.
+- une porte `XOR` : `IR_Change` vaut 1 quand `IR_Sync1` et `IR_Sync2` sont différents, c'est-à-dire pendant un seul coup d'horloge (20 ns) juste après chaque changement du signal.
+- `IR_Change` arrive sur une nouvelle entrée du compteur, `sset`, qui met le compteur à **14203** au lieu de 0.
+
+**pourquoi 14203** : le comparateur donne un top quand le compteur arrive à 28265. en partant de 14203, il reste 28265 - 14203 = **14062** coups d'horloge avant le top, soit environ 281 µs : **un demi-burst** (28125 ÷ 2 ≈ 14062). la première lecture tombe donc un demi-burst après le changement, en plein milieu du burst, et les suivantes un burst plus loin à chaque fois, toujours vers le milieu.
+
+ce qui ne change pas : quand le signal ne change pas (pendant le préambule ou pendant le noir), le métronome tourne exactement comme avant. et le reste du circuit (parties 4, 5 et 6) est exactement celui du pdf.
+
+![](captures/schema_partie_3.png)
+
+*ci-dessus : en haut, le métronome et sa bascule t (pages 9-10), avec la nouvelle entrée `sset` du compteur ; au milieu, l'ajout (2 `DFF` + 1 `XOR`) ; en bas, la recopie du signal (page 11).*
+
 ### partie 4 du sujet : repérer le préambule (pages 13 à 16)
 
 **l'idée** : le préambule est la seule séquence qui fait 16 bursts de lumière d'affilée puis 8 bursts de noir. comme le récepteur est inversé, en lisant une fois par burst on lit : **16 fois 0, puis 8 fois 1**. il suffit de garder en mémoire les 24 dernières lectures et de vérifier si elles forment ce motif.
@@ -147,9 +172,9 @@ attention : le projet, lui, garde bien 28265. le comparateur réglé sur 4 est u
 
 **les leds vertes** : une deuxième bascule t, branchée différemment de la première : ici c'est `StartEvent` qui arrive sur son entrée d'horloge, et son entrée `ENA` est reliée à `VCC` (toujours autorisée). à chaque préambule détecté, elle change d'état. sa sortie (une seule) est reliée aux 4 sorties `LEDG0` à `LEDG3` (pattes `E21`, `E22`, `E25`, `E24`), donc les 4 leds vertes s'allument et s'éteignent ensemble. c'est la preuve visible que la carte "entend" la télécommande.
 
-![](captures/schema_parties_3_et_4.png)
+![](captures/schema_partie_4.png)
 
-*ci-dessus : en haut, le métronome et sa bascule t (pages 9-10) ; au milieu, la recopie du signal (page 11) ; en bas, la détection du préambule et les leds vertes (page 16).*
+*ci-dessus : la détection du préambule et les leds vertes (page 16).*
 
 ### partie 5 du sujet : savoir où on en est (pages 17 à 24)
 
@@ -217,6 +242,7 @@ la machine a été créée avec l'assistant de quartus (state machine wizard), e
 | `Counter_Nbits` + `Comp_MaxValue` | métronome : un top `SamplingClk` par burst | 7 à 10 |
 | `DFFE` + `NOT` → `SamplingEdge` | rend les tops visibles à l'oscilloscope | 10 à 11 |
 | `WIRE` → `IR_RXCopy` | recopie le signal reçu vers l'oscilloscope | 11 |
+| `DFF` + `DFF` + `XOR` → `IR_Change` → `sset` | **l'ajout** : recale le métronome à chaque changement du signal | pas dans le pdf |
 | `ShiftReg24bits` + `CompLeadPulse` | repère le préambule → `StartEvent` | 13 à 15 |
 | `DFFE` + `NOT` → `LEDG0..3` | les leds vertes basculent à chaque appui | 15 à 16 |
 | `CountMod48` + `CompareTo47` | compte les 48 lectures d'une partie | 17 à 18 |
@@ -230,16 +256,17 @@ la machine a été créée avec l'assistant de quartus (state machine wizard), e
 - horloge 50 mégahertz → 1 période = **20 ns**
 - 1 burst = 562,5 µs = **28125** périodes (r) → en théorie le compteur va de 0 à **28124** (r - 1) → il faut **15 bits**
 - valeur réglée dans le projet après la correction de +0,5 % : **28265**
+- valeur de recalage (l'ajout) : **14203** = 28265 - 14062, où 14062 ≈ un demi-burst
 - préambule reçu : 16 × 0 puis 8 × 1 = **255**
 - une partie (octet + son inverse) = **48** lectures → comparateur à **47**
 - `Command[7..0]` = code de la touche, `Command[15..8]` = son inverse
-- le circuit utilise **88 cellules logiques** sur les 114 480 du fpga (moins de 1 %)
+- le circuit utilise **91 cellules logiques** sur les 114 480 du fpga (moins de 1 %)
 
 ---
 
 ## 5. l'expliquer à quelqu'un en 1 minute
 
-> "la télécommande envoie des flashs infrarouges. le temps est découpé en tranches de 562,5 µs qu'on appelle des bursts : un 0, c'est un burst de lumière suivi d'un burst de noir, un 1, c'est un burst de lumière suivi de trois bursts de noir. dans le fpga, j'ai d'abord fait un compteur qui donne un top à chaque burst, pour lire le signal une fois par burst, qu'il y ait de la lumière ou pas. ensuite, un registre à décalage garde les 24 dernières lectures et un comparateur reconnaît le début du message, le préambule. à partir de là, une machine d'états à 3 états suit le message : attente, lecture de l'adresse, lecture de la commande, en comptant 48 lectures pour chaque partie. pendant la commande, un petit compteur mesure combien de bursts de noir suivent chaque flash, pour savoir si le bit vaut 0 ou 1, et un registre à décalage de 16 bits les stocke. au final, le code de la touche s'affiche sur les leds rouges, et les leds vertes changent d'état à chaque appui."
+> "la télécommande envoie des flashs infrarouges. le temps est découpé en tranches de 562,5 µs qu'on appelle des bursts : un 0, c'est un burst de lumière suivi d'un burst de noir, un 1, c'est un burst de lumière suivi de trois bursts de noir. dans le fpga, j'ai d'abord fait un compteur qui donne un top à chaque burst, pour lire le signal une fois par burst, qu'il y ait de la lumière ou pas. à chaque flash, je recale ce compteur pour que la lecture tombe au milieu d'un burst : sinon, les petites différences de vitesse avec la télécommande s'accumulent et la fin du message est mal lue. ensuite, un registre à décalage garde les 24 dernières lectures et un comparateur reconnaît le début du message, le préambule. à partir de là, une machine d'états à 3 états suit le message : attente, lecture de l'adresse, lecture de la commande, en comptant 48 lectures pour chaque partie. pendant la commande, un petit compteur mesure combien de bursts de noir suivent chaque flash, pour savoir si le bit vaut 0 ou 1, et un registre à décalage de 16 bits les stocke. au final, le code de la touche s'affiche sur les leds rouges, et les leds vertes changent d'état à chaque appui."
 
 ---
 
@@ -248,12 +275,17 @@ la machine a été créée avec l'assistant de quartus (state machine wizard), e
 - le projet a été créé avec **quartus 19.1** (la version du sujet), pour le fpga de la carte (modèle `EP4CE115F29C7`, de la famille cyclone iv), avec modelsim en vhdl comme logiciel de simulation (annexe 1).
 - tous les compteurs, comparateurs et registres ont été fabriqués avec l'**ip catalog** de quartus (le "catalogue de composants" des pages 7, 8, 13, 14), avec les réglages demandés par le sujet. c'est pour ça qu'il y a 4 fichiers par composant (`.vhd`, `.bsf`, `.cmp`, `.qip`) : ce sont les fichiers que quartus crée tout seul.
 - la machine d'états a été faite avec l'assistant **state machine wizard** (fichier `FrameDecoder.smf`), puis traduite en vhdl par quartus ("generate hdl file").
-- le schéma reprend les figures du pdf : mêmes blocs, mêmes noms, mêmes pattes. les captures du schéma et de la machine d'états viennent de quartus ; les deux captures de simulation viennent de gtkwave (le logiciel de courbes utilisé avec ghdl).
+- le schéma reprend les figures du pdf : mêmes blocs, mêmes noms, mêmes pattes, plus l'ajout du recalage. les captures du schéma et de la machine d'états viennent de quartus ; les deux captures de simulation viennent de gtkwave (le logiciel de courbes utilisé avec ghdl).
 - les 3 cadres "à déterminer" du pdf (pages 26 et 27) ont été remplis avec les portes logiques expliquées dans la section 4 (partie 6 du sujet).
 - les pattes de la carte sont déjà réglées dans le projet (annexe 4).
 - le projet a été compilé sans erreur, et le circuit a été vérifié en simulation.
+- après le premier essai sur la carte (partie 6 en panne), l'ajout a été fait, puis le projet a été recompilé et revérifié en simulation.
 
-### les seules différences avec les figures du pdf (sans effet)
+### les différences avec les figures du pdf
+
+- **l'ajout du recalage** (2 `DFF`, 1 `XOR` et l'entrée `sset` du compteur `Counter_Nbits`) : c'est la seule différence qui change le fonctionnement. sans lui, la partie 6 ne marchait pas sur la carte. la version identique au pdf, sans l'ajout, est dans la branche `version-pdf` : `git checkout version-pdf` pour la récupérer, `git checkout master` pour revenir.
+
+les autres différences n'ont aucun effet :
 
 - les figures des pages 9 et 10 montrent `datab[]=28124` : c'est la valeur avant la correction de +0,5 % que le pdf demande page 12. le projet final utilise 28265.
 - le fil qui revient du comparateur à 47 s'appelle `CounterIs47` dans le projet (comme l'entrée de la machine d'états), alors que sur la figure page 23 on lit un nom coupé (`CountIs4...`). c'est juste un nom de fil, la connexion est la même.
@@ -320,17 +352,15 @@ la masse de la sonde se branche sur une broche `GND` du connecteur (broche 12 ou
 
 ---
 
-## 9. la limite du montage
+## 9. la limite du montage (et pourquoi l'ajout)
 
-le circuit ne lit qu'**une seule fois par burst**, avec un métronome qui n'est pas synchronisé sur la télécommande. si la télécommande et le métronome n'ont pas tout à fait la même vitesse, l'instant de lecture glisse un peu à chaque burst. sur les 121 bursts d'un message (24 de préambule + 48 + 48 + 1 de fin), ce petit glissement s'accumule : si la lecture tombait déjà près du bord d'un burst au début, elle finit par lire le burst d'à côté, et le bit est faux.
+le circuit ne lit qu'**une seule fois par burst**. dans la version du pdf, le métronome n'est jamais recalé sur la télécommande : si les deux n'ont pas tout à fait la même vitesse, l'instant de lecture glisse un peu à chaque burst. sur les 121 bursts d'un message (24 de préambule + 48 + 48 + 1 de fin), ce petit glissement s'accumule : la lecture finit par tomber sur le burst d'à côté, et les derniers bits (ceux de la commande) sont faux.
 
-c'est pour ça que le sujet ralentit l'échantillonnage de 0,5 % (remarque 1, page 12) : il dit seulement que la vraie télécommande est un peu plus lente que la norme (moins de 1 %), et qu'avec cette correction le décodage est plus fiable.
+le sujet essaie de compenser en ralentissant le métronome de 0,5 % (remarque 1, page 12), parce que la télécommande du tp est un peu plus lente que la norme. mais ça ne marche bien que si la télécommande est presque exactement 0,5 % plus lente. avec l'ajout, le glissement repart de zéro à chaque flash, donc il ne s'accumule plus.
 
-ce qu'on a mesuré en simulation, sur 24 messages chaque fois :
-- télécommande 0,5 % plus lente que la norme : **24 sur 24** bien décodés
-- télécommande 0,4 % ou 0,6 % plus lente que la norme : **21 sur 24** (environ 1 raté sur 8)
-
-c'est le principe du tp qui veut ça, pas une erreur dans le projet : si une touche est mal lue, il suffit de rappuyer.
+ce qu'on a mesuré en simulation, avec plusieurs instants de départ différents à chaque fois :
+- **version du pdf** : tous les messages sont bien lus seulement si la télécommande est **0,5 % plus lente** que la norme (la valeur prévue par le sujet). si elle va exactement à la vitesse de la norme, seulement 1 essai sur 4 donne la bonne commande ; si elle est 0,5 % plus rapide, aucun.
+- **avec l'ajout** : tous les messages sont bien lus pour une télécommande entre **2 % plus rapide et 3 % plus lente** que la norme (3 % plus lente, c'est la plus grande valeur testée). à 3 % plus rapide, c'est le préambule qui n'est plus reconnu : ses 9 ms de lumière deviennent trop courtes pour contenir 16 lectures.
 
 ---
 
@@ -341,7 +371,7 @@ c'est le principe du tp qui veut ça, pas une erreur dans le projet : si une tou
 | `DecodeurIR.qpf` | le projet quartus, à ouvrir avec quartus |
 | `DecodeurIR.bdf` | le schéma : tout le tp est dedans |
 | `DecodeurIR.qsf` | les réglages : fpga utilisé, fichiers, pattes |
-| `Counter_Nbits`, `Comp_MaxValue` | partie 3 (compteur 15 bits, comparateur à 28265) |
+| `Counter_Nbits`, `Comp_MaxValue` | partie 3 (compteur 15 bits avec l'entrée `sset` de l'ajout, comparateur à 28265) |
 | `ShiftReg24bits`, `CompLeadPulse` | partie 4 (registre 24 bits, comparateur à 255) |
 | `CountMod48`, `CompareTo47` | partie 5 (compteur modulo 48, comparateur à 47) |
 | `FrameDecoder.smf` → `FrameDecoder.vhd` | partie 5 (machine d'états) |
@@ -362,5 +392,6 @@ c'est le principe du tp qui veut ça, pas une erreur dans le projet : si une tou
 
 - **"quartus introuvable"** : tape `export QUARTUS_ROOTDIR=$HOME/intelFPGA_lite/19.1/quartus`, puis relance `./run.sh`
 - **"aucun câble usb-blaster détecté"** : vérifie le câble (port usb blaster), que la carte est allumée et sur run, puis tape `./run.sh usb`, et débranche / rebranche le câble
+- **les leds vertes marchent mais les leds rouges affichent n'importe quoi** : tu as sûrement encore l'ancienne version. tape `git pull` dans le dossier, puis `./run.sh`
 - **modelsim ne se lance pas** : pas grave, la simulation passe toute seule par ghdl. pour l'utiliser directement : `./run.sh simulation ghdl`
 - **version de quartus** : le pdf d'installation demande la 19.1, garde-la. le projet a été fait et testé avec la 19.1 ; une version plus récente devrait l'ouvrir (en proposant de le mettre à jour), mais ça n'a pas été testé.
